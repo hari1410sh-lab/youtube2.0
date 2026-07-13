@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 
 import Sidebar from "@/components/sidebar";
+import VideoPlayer from "@/components/video-player";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import axiosInstance from "@/lib/axiosinstance";
@@ -38,6 +39,12 @@ function getVideoFromRoute(id: string | string[] | undefined) {
 }
 
 function SuggestedVideo({ video }: { video: Video }) {
+  const [timeAgo, setTimeAgo] = useState("");
+
+  useEffect(() => {
+    setTimeAgo(formatDateToNow(video.createdAt));
+  }, [video.createdAt]);
+
   return (
     <Link
       href={`/watch/${video.id}`}
@@ -59,8 +66,8 @@ function SuggestedVideo({ video }: { video: Video }) {
           {video.channel}
         </p>
         <p className="text-xs text-muted-foreground">
-          {formatViews(video.views)} views - {formatDateToNow(video.createdAt)}
-        </p>
+  {formatViews(video.views)} views - {timeAgo}
+</p>
       </div>
     </Link>
   );
@@ -76,6 +83,11 @@ function CommentItem({
   onDelete: (id: string) => void;
 }) {
   const isOwn = currentUserId && comment.userId === currentUserId;
+  const [timeAgo, setTimeAgo] = useState("");
+
+  useEffect(() => {
+    setTimeAgo(formatDateToNow(comment.createdAt));
+  }, [comment.createdAt]);
 
   return (
     <div className="group flex gap-3 py-3">
@@ -92,9 +104,9 @@ function CommentItem({
           <span className="text-[13px] font-semibold">
             {comment.userName || "Anonymous"}
           </span>
-          <span className="text-xs text-muted-foreground">
-            {formatDateToNow(comment.createdAt)}
-          </span>
+         <span className="text-xs text-muted-foreground">
+  {timeAgo}
+</span>
         </div>
         <p className="mt-1 text-sm leading-5">{comment.text}</p>
       </div>
@@ -138,6 +150,7 @@ export default function WatchPage() {
   const [commentText, setCommentText] = useState("");
   const [commentLoading, setCommentLoading] = useState(false);
   const [commentInputFocused, setCommentInputFocused] = useState(false);
+  const [videoTimeAgo, setVideoTimeAgo] = useState("");
 
   useEffect(() => {
     if (!id) return;
@@ -257,9 +270,14 @@ export default function WatchPage() {
       }
     };
 
-    fetchVideoAndSuggested();
+ fetchVideoAndSuggested();
   }, [id, user?._id]);
 
+  useEffect(() => {
+    if (currentVideo?.createdAt) {
+      setVideoTimeAgo(formatDateToNow(currentVideo.createdAt));
+    }
+  }, [currentVideo?.createdAt]);
   const handleLike = useCallback(async () => {
     if (!user?._id || !isDbVideo || reactionLoading) {
       if (!user) {
@@ -391,13 +409,19 @@ export default function WatchPage() {
       <Sidebar />
       <main className="grid min-w-0 flex-1 gap-5 px-4 py-4 lg:grid-cols-[minmax(0,1fr)_320px] xl:grid-cols-[minmax(0,1fr)_360px] 2xl:grid-cols-[minmax(0,840px)_390px]">
         <section className="min-w-0">
-          <video
-            controls
-            autoPlay
-            preload="metadata"
+          <VideoPlayer
             src={videoSrc}
-            className="aspect-video w-full rounded-lg bg-black"
-            aria-label={`${currentVideo.title} video player`}
+            title={currentVideo.title}
+            nextVideo={
+              suggested.length > 0
+                ? { id: suggested[0].id, title: suggested[0].title }
+                : null
+            }
+            onNext={() => {
+              if (suggested.length > 0) {
+                router.push(`/watch/${suggested[0].id}`);
+              }
+            }}
           />
 
           <h1 className="mt-4 text-xl font-bold leading-7">
@@ -479,9 +503,9 @@ export default function WatchPage() {
 
           <div className="mt-4 rounded-lg bg-secondary p-4 text-sm leading-6">
             <div className="mb-2 flex flex-wrap gap-x-4 font-semibold">
-              <span>{formatViews(currentVideo.views)} views</span>
-              <span>{formatDateToNow(currentVideo.createdAt)}</span>
-            </div>
+  <span>{formatViews(currentVideo.views)} views</span>
+  <span>{videoTimeAgo}</span>
+</div>
             <p>{currentVideo.description}</p>
             <button className="mt-2 text-sm font-semibold">Show more</button>
           </div>
@@ -584,3 +608,4 @@ export default function WatchPage() {
     </div>
   );
 }
+

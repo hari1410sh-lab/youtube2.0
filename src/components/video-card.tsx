@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Play } from "lucide-react";
 
@@ -7,8 +8,13 @@ import { formatDateToNow, formatViews, type Video } from "@/lib/youtube-data";
 type VideoCardProps = {
   video: Video;
 };
-
 export function VideoCard({ video }: VideoCardProps) {
+  const [timeAgo, setTimeAgo] = useState("");
+
+  useEffect(() => {
+    setTimeAgo(formatDateToNow(video.createdAt));
+  }, [video.createdAt]);
+
   return (
     <Link href={`/watch/${video.id}`} className="group block">
       <article className="grid gap-3">
@@ -35,9 +41,9 @@ export function VideoCard({ video }: VideoCardProps) {
             <p className="mt-1 truncate text-sm text-muted-foreground">
               {video.channel}
             </p>
-            <p className="text-sm text-muted-foreground">
-              {formatViews(video.views)} views - {formatDateToNow(video.createdAt)}
-            </p>
+           <p className="text-sm text-muted-foreground">
+  {formatViews(video.views)} views - {timeAgo}
+</p>
           </div>
         </div>
       </article>

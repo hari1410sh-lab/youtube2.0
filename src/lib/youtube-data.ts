@@ -188,7 +188,7 @@ export const watchLaterVideos = [
 ];
 
 export function formatViews(views: number) {
-  return views.toLocaleString();
+  return views.toLocaleString("en-US");
 }
 
 export function formatDateToNow(date: string) {

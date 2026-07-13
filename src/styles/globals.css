@@ -141,3 +141,119 @@ body {
     @apply font-sans;
   }
 }
+
+/* ========================================================= */
+/*  CUSTOM VIDEO PLAYER STYLES                                */
+/* ========================================================= */
+
+/* -- Seek bar (red YouTube-style) -- */
+.vp-seek-input::-webkit-slider-runnable-track {
+  height: 3px;
+  background: transparent;
+  border-radius: 999px;
+  transition: height 0.15s ease;
+}
+.vp-seek-container:hover .vp-seek-input::-webkit-slider-runnable-track {
+  height: 5px;
+}
+
+.vp-seek-input::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 0px;
+  height: 0px;
+  background: #dc2626;
+  border-radius: 50%;
+  border: none;
+  transition: all 0.15s ease;
+  margin-top: -1px;
+  box-shadow: 0 0 0 0 rgba(220, 38, 38, 0);
+}
+.vp-seek-container:hover .vp-seek-input::-webkit-slider-thumb {
+  width: 14px;
+  height: 14px;
+  margin-top: -5px;
+  box-shadow: 0 0 6px 2px rgba(220, 38, 38, 0.35);
+}
+
+.vp-seek-input::-moz-range-track {
+  height: 3px;
+  background: transparent;
+  border-radius: 999px;
+}
+.vp-seek-input::-moz-range-thumb {
+  width: 0px;
+  height: 0px;
+  background: #dc2626;
+  border-radius: 50%;
+  border: none;
+  transition: all 0.15s ease;
+}
+.vp-seek-container:hover .vp-seek-input::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  box-shadow: 0 0 6px 2px rgba(220, 38, 38, 0.35);
+}
+
+/* -- Volume slider (white) -- */
+.vp-volume-input::-webkit-slider-runnable-track {
+  height: 3px;
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 999px;
+}
+.vp-volume-input::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  background: white;
+  border-radius: 50%;
+  border: none;
+  margin-top: -4.5px;
+  transition: transform 0.12s ease;
+}
+.vp-volume-input::-webkit-slider-thumb:hover {
+  transform: scale(1.25);
+}
+
+.vp-volume-input::-moz-range-track {
+  height: 3px;
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 999px;
+}
+.vp-volume-input::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  background: white;
+  border-radius: 50%;
+  border: none;
+}
+
+/* -- Skip indicator fade animation -- */
+.vp-skip-indicator {
+  animation: vp-skip-fade 0.7s ease-out forwards;
+  pointer-events: none;
+}
+
+@keyframes vp-skip-fade {
+  0% {
+    opacity: 0;
+    transform: translateY(-50%) scale(0.7);
+  }
+  20% {
+    opacity: 1;
+    transform: translateY(-50%) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-50%) scale(1.15);
+  }
+}
+
+/* -- Container fullscreen style -- */
+.vp-container:fullscreen {
+  border-radius: 0;
+}
+.vp-container:fullscreen video {
+  object-fit: contain;
+}
