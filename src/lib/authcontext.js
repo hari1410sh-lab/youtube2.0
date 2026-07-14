@@ -7,14 +7,14 @@ import { auth, provider } from "./firebase";
 const userContext = createContext(null);
 
 export const UserProvider = ({ children }) => {
-  const [user, setUser] = useState(() => {
-    if (typeof window === "undefined") {
-      return null;
-    }
+  const [user, setUser] = useState(null);
 
-    const savedUser = localStorage.getItem("user");
-    return savedUser ? JSON.parse(savedUser) : null;
-  });
+useEffect(() => {
+  const savedUser = localStorage.getItem("user");
+  if (savedUser) {
+    setUser(JSON.parse(savedUser));
+  }
+}, []);
 
   const login = (userdata) => {
     setUser(userdata);
@@ -36,7 +36,7 @@ export const UserProvider = ({ children }) => {
 
   const saveUserWithBackendFallback = async (payload) => {
     try {
-      const response = await axiosInstance.post("/auth/login", payload);
+    const response = await axiosInstance.post("/user/login", payload);
       login(response.data.result);
     } catch (error) {
       console.error(error);
