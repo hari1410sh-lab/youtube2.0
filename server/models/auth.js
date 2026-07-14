@@ -29,6 +29,24 @@ const userSchema = new mongoose.Schema({
       ref: "Video",
     },
   ],
+  plan: {
+    type: String,
+    enum: ["Free", "Bronze", "Silver", "Gold"],
+    default: "Free",
+  },
+  planExpiry: {
+    type: Date,
+    default: null,
+  },
+  paymentHistory: [
+  {
+    plan: String,
+    amount: Number,
+    razorpayPaymentId: String,
+    razorpayOrderId: String,
+    date: { type: Date, default: Date.now },
+  },
+],
 });
 
 export default mongoose.model("User", userSchema);
