@@ -1,6 +1,8 @@
 import crypto from "crypto";
 import Razorpay from "razorpay";
 import users from "../auth.js";
+import { sendPaymentConfirmationEmail } from "../../utils/mailer.js";
+
 
 function getRazorpayInstance() {
   return new Razorpay({
@@ -80,6 +82,20 @@ export const verifyPayment = async (req, res) => {
     });
 
     await user.save();
+
+    try {
+      await sendPaymentConfirmationEmail({
+        to: user.email,
+        userName: user.name,
+        plan,
+        amount: PLAN_PRICES[plan],
+        paymentId: razorpay_payment_id,
+        orderId: razorpay_order_id,
+        date: new Date().toLocaleString("en-IN"),
+      });
+    } catch (emailError) {
+      console.error("Failed to send confirmation email:", emailError);
+    }
 
     return res.status(200).json({ result: user });
   } catch (error) {
