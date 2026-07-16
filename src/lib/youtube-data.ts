@@ -1,6 +1,5 @@
 import {
   Clock,
-  Compass,
   Flame,
   Gamepad2,
   GraduationCap,
@@ -47,8 +46,7 @@ export const categories = [
 
 export const sidebarItems = [
   { label: "Home", icon: Home, href: "/" },
-  { label: "Explore", icon: Compass, href: "#" },
-  { label: "Subscriptions", icon: PlaySquare, href: "#" },
+  { label: "Subscription", icon: PlaySquare, href: "/subscribe" },
   { label: "History", icon: History, href: "/history" },
   { label: "Liked videos", icon: ThumbsUp, href: "/liked-videos" },
   { label: "Watch later", icon: Clock, href: "/watch-later" },
