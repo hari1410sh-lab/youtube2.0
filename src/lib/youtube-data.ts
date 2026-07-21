@@ -1,5 +1,6 @@
 import {
   Clock,
+  Download,
   Flame,
   Gamepad2,
   GraduationCap,
@@ -50,6 +51,7 @@ export const sidebarItems = [
   { label: "History", icon: History, href: "/history" },
   { label: "Liked videos", icon: ThumbsUp, href: "/liked-videos" },
   { label: "Watch later", icon: Clock, href: "/watch-later" },
+  { label: "Downloads", icon: Download, href: "/downloads" },
   { label: "Your channel", icon: User, href: "/channel/1" },
 ];
 

@@ -53,16 +53,11 @@ export const videoApi = {
    * Uploads a video file and its metadata to the server.
    */
   uploadVideo: async (formData: FormData): Promise<DbVideoResponse> => {
-    const response = await axiosInstance.post<{ result: DbVideoResponse }>(
-      "/video/upload",
-      formData,
-      {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-      }
-    );
-    return response.data?.result;
+   const response = await axiosInstance.post<{ result: DbVideoResponse }>(
+     "/video/upload",
+     formData
+   );
+   return response.data?.result;
   },
 
   /**
@@ -155,6 +150,32 @@ export const videoApi = {
   getLikedVideos: async (userId: string): Promise<DbVideoResponse[]> => {
     const response = await axiosInstance.get<{ result: DbVideoResponse[] }>(
       `/user/liked-videos/${userId}`
+    );
+    return response.data?.result || [];
+  },
+  // ─── Downloads ─────────────────────────────────────────────
+
+  /**
+   * Requests permission to download a video. Backend checks the user's
+   * plan-based daily limit before allowing it. Throws if the limit is
+   * exceeded — check err.response.data.message for the reason.
+   */
+  requestDownload: async (
+    videoId: string,
+    userId: string
+  ): Promise<{ downloadId: string; videoUrl: string; title: string; remainingToday: number | string }> => {
+    const response = await axiosInstance.post<{
+      result: { downloadId: string; videoUrl: string; title: string; remainingToday: number | string };
+    }>(`/download/request/${videoId}`, { userId });
+    return response.data?.result;
+  },
+
+  /**
+   * Fetches a user's full download history, most recent first.
+   */
+  getUserDownloads: async (userId: string): Promise<any[]> => {
+    const response = await axiosInstance.get<{ result: any[] }>(
+      `/download/user/${userId}`
     );
     return response.data?.result || [];
   },

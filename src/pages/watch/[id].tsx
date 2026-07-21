@@ -1,9 +1,10 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import {
   BookmarkPlus,
   BookmarkCheck,
+  CheckCircle2,
   Download,
   MoreHorizontal,
   Send,
@@ -11,6 +12,7 @@ import {
   ThumbsDown,
   ThumbsUp,
   Trash2,
+  XCircle,
 } from "lucide-react";
 
 import Sidebar from "@/components/sidebar";
@@ -27,6 +29,19 @@ import {
   videos,
 } from "@/lib/youtube-data";
 
+function triggerBrowserDownload(fileUrl: string, fileName: string) {
+  // Use a direct link with the download attribute — the browser streams the
+  // file natively from the server. The old fetch→blob approach was corrupt
+  // because revokeObjectURL was called immediately after click(), before the
+  // browser actually read the blob data.
+  const link = document.createElement("a");
+  link.href = fileUrl;
+  link.download = fileName || "video.mp4";
+  link.rel = "noopener noreferrer";
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
 function getVideoFromRoute(id: string | string[] | undefined) {
   const routeId = Array.isArray(id) ? id[0] : id;
   const numericIndex = Number(routeId) - 1;
@@ -83,7 +98,7 @@ function CommentItem({
   onDelete: (id: string) => void;
 }) {
   const isOwn = currentUserId && comment.userId === currentUserId;
-  const [timeAgo, setTimeAgo] = useState("");
+  const [timeAgo, setTimeAgo] = useState(""); 
 
   useEffect(() => {
     setTimeAgo(formatDateToNow(comment.createdAt));
@@ -151,6 +166,26 @@ export default function WatchPage() {
   const [commentLoading, setCommentLoading] = useState(false);
   const [commentInputFocused, setCommentInputFocused] = useState(false);
   const [videoTimeAgo, setVideoTimeAgo] = useState("");
+  const [downloadLoading, setDownloadLoading] = useState(false);
+  const [downloadToast, setDownloadToast] = useState<{
+    type: "success" | "error";
+    message: string;
+  } | null>(null);
+  const [remainingDownloads, setRemainingDownloads] = useState<number | string | null>(null);
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const showToast = useCallback(
+    (type: "success" | "error", message: string) => {
+      setDownloadToast({ type, message });
+      if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+      toastTimerRef.current = setTimeout(() => setDownloadToast(null), 5000);
+    },
+    []
+  );
+
+  useEffect(() => () => {
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+  }, []);
 
   useEffect(() => {
     if (!id) return;
@@ -326,6 +361,38 @@ export default function WatchPage() {
     }
   }, [user, isDbVideo, reactionLoading, currentVideo?.id]);
 
+  const handleDownload = useCallback(async () => {
+    if (!user?._id || !isDbVideo || downloadLoading) {
+      if (!user) {
+        showToast("error", "Please sign in to download videos.");
+      }
+      return;
+    }
+
+    setDownloadLoading(true);
+    try {
+      const result = await videoApi.requestDownload(currentVideo.id, user._id);
+      const fileUrl = result.videoUrl.startsWith("http")
+        ? result.videoUrl
+        : `${axiosInstance.defaults.baseURL}${result.videoUrl}`;
+
+      await triggerBrowserDownload(fileUrl, `${result.title}.mp4`);
+      setRemainingDownloads(result.remainingToday);
+      showToast(
+        "success",
+        `Download started! Remaining today: ${
+          result.remainingToday === "Unlimited" ? "∞" : result.remainingToday
+        }`
+      );
+    } catch (error: any) {
+      const message =
+        error?.response?.data?.message || "Failed to download video.";
+      showToast("error", message);
+    } finally {
+      setDownloadLoading(false);
+    }
+  }, [user, isDbVideo, downloadLoading, currentVideo?.id, showToast]);
+
   const handleToggleWatchLater = useCallback(async () => {
     if (!user?._id || !isDbVideo || saveLoading) {
       if (!user) {
@@ -333,6 +400,7 @@ export default function WatchPage() {
       }
       return;
     }
+
 
     setSaveLoading(true);
     try {
@@ -403,10 +471,35 @@ export default function WatchPage() {
       ? currentVideo.videoUrl
       : `${axiosInstance.defaults.baseURL}${currentVideo.videoUrl}`)
     : "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4";
-
   return (
     <div className="flex min-h-[calc(100vh-4rem)] bg-background">
       <Sidebar />
+
+      {/* ─── Download Toast ─── */}
+      {downloadToast && (
+        <div
+          className={`fixed bottom-6 left-1/2 z-50 -translate-x-1/2 flex items-center gap-3 rounded-xl px-5 py-3.5 shadow-2xl text-sm font-medium backdrop-blur-sm border transition-all duration-300 ${
+            downloadToast.type === "success"
+              ? "bg-emerald-950/90 border-emerald-500/30 text-emerald-300"
+              : "bg-red-950/90 border-red-500/30 text-red-300"
+          }`}
+        >
+          {downloadToast.type === "success" ? (
+            <CheckCircle2 className="size-4 shrink-0 text-emerald-400" />
+          ) : (
+            <XCircle className="size-4 shrink-0 text-red-400" />
+          )}
+          <span>{downloadToast.message}</span>
+          <button
+            onClick={() => setDownloadToast(null)}
+            className="ml-2 text-white/30 hover:text-white/70 transition-colors"
+            aria-label="Dismiss"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
       <main className="grid min-w-0 flex-1 gap-5 px-4 py-4 lg:grid-cols-[minmax(0,1fr)_320px] xl:grid-cols-[minmax(0,1fr)_360px] 2xl:grid-cols-[minmax(0,840px)_390px]">
         <section className="min-w-0">
           <VideoPlayer
@@ -476,9 +569,23 @@ export default function WatchPage() {
                 <Share2 className="size-4" />
                 Share
               </Button>
-              <Button variant="secondary" className="rounded-full px-3">
-                <Download className="size-4" />
-                Download
+              <Button
+                variant="secondary"
+                className="flex flex-col items-center rounded-full px-3 h-auto py-1.5"
+                onClick={handleDownload}
+                disabled={downloadLoading}
+              >
+                <span className="flex items-center gap-1.5">
+                  <Download className="size-4" />
+                  {downloadLoading ? "Downloading..." : "Download"}
+                </span>
+                {remainingDownloads !== null && (
+                  <span className="text-[10px] leading-none text-muted-foreground mt-0.5">
+                    {remainingDownloads === "Unlimited" || remainingDownloads === "∞"
+                      ? "∞ remaining"
+                      : `${remainingDownloads} left today`}
+                  </span>
+                )}
               </Button>
               <Button
                 id="save-button"
