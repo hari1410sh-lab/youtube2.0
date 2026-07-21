@@ -1,5 +1,31 @@
+import { Readable } from "stream";
 import mongoose from "mongoose";
 import Video from "../video.js";
+import cloudinary from "../../config/cloudinary.js";
+
+const uploadVideoToCloudinary = (buffer, publicId) =>
+  new Promise((resolve, reject) => {
+    const uploadStream = cloudinary.uploader.upload_stream(
+      {
+        resource_type: "video",
+        folder: "youtube2/videos",
+        public_id: publicId,
+        overwrite: true,
+      },
+      (error, result) => {
+        if (error) {
+          reject(error);
+          return;
+        }
+        resolve(result);
+      }
+    );
+
+    const readable = new Readable();
+    readable.push(buffer);
+    readable.push(null);
+    readable.pipe(uploadStream);
+  });
 
 export const uploadVideo = async (req, res) => {
   try {
@@ -13,15 +39,23 @@ export const uploadVideo = async (req, res) => {
       return res.status(400).json({ message: "Video title is required" });
     }
 
-    // Construct the video URL for local file access
-    const videoUrl = `/uploads/${req.file.filename}`;
+    const originalName = req.file.originalname;
+    const safeName = originalName.replace(/\.[^/.]+$/, "").replace(/[^a-zA-Z0-9-_]/g, "_");
+    const publicId = `${Date.now()}-${Math.round(Math.random() * 1e9)}-${safeName}`;
+    const uploadResult = await uploadVideoToCloudinary(req.file.buffer, publicId);
+
+    const videoUrl = uploadResult.secure_url || uploadResult.url || "";
+    const thumbnailUrl = uploadResult.thumbnail_url || "";
+    const duration = uploadResult.duration || 0;
 
     const video = await Video.create({
       title: title.trim(),
       description: description?.trim() || "",
-      videoUrl: videoUrl,
-      originalName: req.file.originalname,
-      fileName: req.file.filename,
+      videoUrl,
+      thumbnailUrl,
+      duration,
+      originalName,
+      fileName: originalName,
       fileSize: req.file.size,
       mimeType: req.file.mimetype,
       channelName: channelName?.trim() || "",
