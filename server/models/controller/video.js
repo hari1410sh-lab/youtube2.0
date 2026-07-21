@@ -13,10 +13,13 @@ export const uploadVideo = async (req, res) => {
       return res.status(400).json({ message: "Video title is required" });
     }
 
+    // Construct the video URL for local file access
+    const videoUrl = `/uploads/${req.file.filename}`;
+
     const video = await Video.create({
       title: title.trim(),
       description: description?.trim() || "",
-      videoUrl: `/uploads/videos/${req.file.filename}`,
+      videoUrl: videoUrl,
       originalName: req.file.originalname,
       fileName: req.file.filename,
       fileSize: req.file.size,
@@ -27,8 +30,9 @@ export const uploadVideo = async (req, res) => {
 
     return res.status(201).json({ result: video });
   } catch (error) {
-    console.error(error);
-    return res.status(500).json({ message: "Could not upload video" });
+    console.error("Video upload error:", error.message);
+    console.error("Full error:", error);
+    return res.status(500).json({ message: "Could not upload video", error: error.message });
   }
 };
 
