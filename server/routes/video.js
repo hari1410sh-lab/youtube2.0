@@ -13,18 +13,8 @@ if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
 
-// Configure local storage
-const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => {
-    cb(null, uploadDir);
-  },
-  filename: (_req, file, cb) => {
-    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-    const ext = path.extname(file.originalname);
-    const name = path.basename(file.originalname, ext);
-    cb(null, name + "-" + uniqueSuffix + ext);
-  },
-});
+// Configure memory storage for Cloudinary streaming
+const storage = multer.memoryStorage();
 
 const upload = multer({
   storage,
