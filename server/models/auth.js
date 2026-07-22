@@ -39,14 +39,19 @@ const userSchema = new mongoose.Schema({
     default: null,
   },
   paymentHistory: [
-  {
-    plan: String,
-    amount: Number,
-    razorpayPaymentId: String,
-    razorpayOrderId: String,
-    date: { type: Date, default: Date.now },
+    {
+      plan: String,
+      amount: Number,
+      razorpayPaymentId: String,
+      razorpayOrderId: String,
+      date: { type: Date, default: Date.now },
+    },
+  ],
+  theme: {
+    type: String,
+    enum: ["light", "dark"],
+    default: "dark",
   },
-],
 });
 
 export default mongoose.model("User", userSchema);

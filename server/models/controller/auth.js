@@ -2,6 +2,20 @@ import mongoose from "mongoose";
 import users from "../auth.js";
 import Video from "../video.js";
 
+function getISTHour() {
+  const formatter = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Kolkata",
+    hour: "numeric",
+    hour12: false,
+  });
+  return parseInt(formatter.format(new Date()), 10);
+}
+
+function getDefaultTheme() {
+  const hour = getISTHour();
+  return hour >= 10 && hour < 12 ? "light" : "dark";
+}
+
 export const login = async (req, res) => {
   const { email, name, image } = req.body;
   try {
@@ -14,6 +28,7 @@ export const login = async (req, res) => {
           image,
           channelname: name || "My Channel",
           description: "",
+          theme: getDefaultTheme(),
         });
         return res.status(200).json({ result: newUser });
       } catch (error) {
@@ -100,4 +115,26 @@ export const getLikedVideos = async (req, res) => {
     return res.status(500).json({ message: "Something went wrong" });
   }
 };
+export const updateTheme = async (req, res) => {
+  const { userId } = req.params;
+  const { theme } = req.body;
 
+  if (!["light", "dark"].includes(theme)) {
+    return res.status(400).json({ message: "Invalid theme value" });
+  }
+
+  try {
+    const user = await users.findByIdAndUpdate(
+      userId,
+      { theme },
+      { new: true }
+    );
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    return res.status(200).json({ result: user });
+  } catch (error) {
+    console.error("Error updating theme:", error);
+    return res.status(500).json({ message: "Something went wrong" });
+  }
+};
