@@ -4,8 +4,10 @@ import {
   Menu,
   Mic,
   MoreVertical,
+  Moon,
   Plus,
   Search,
+  Sun,
   Upload,
   Video,
 } from "lucide-react";
@@ -39,17 +41,19 @@ const navItems = ["Home", "Shorts", "Subscriptions", "Library"];
 type HeaderUser = {
   name?: string | null;
   image?: string | null;
+  theme?: string;
 };
 
 type UserContextValue = {
   user: HeaderUser | null;
   logout: () => void;
   handlegoogleSignIn: () => void;
+  toggleTheme: () => void;
 };
 
 export function Header() {
   const router = useRouter();
-  const { user, logout, handlegoogleSignIn } = useUser() as UserContextValue;
+  const { user, logout, handlegoogleSignIn, toggleTheme } = useUser() as UserContextValue;
   const [searchQuery, setSearchQuery] = useState(
     typeof router.query.q === "string" ? router.query.q : "",
   );
@@ -166,11 +170,27 @@ export function Header() {
             </DropdownMenuContent>
           </DropdownMenu>
 
+          {user && (
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label="Toggle theme"
+              onClick={toggleTheme}
+            >
+              {user.theme === "light" ? (
+                <Moon className="size-5" />
+              ) : (
+                <Sun className="size-5" />
+              )}
+            </Button>
+          )}
+
           <Button variant="ghost" size="icon" aria-label="Notifications">
             <Bell className="size-5" />
           </Button>
 
           <Separator orientation="vertical" className="mx-1 hidden h-6 sm:block" />
+        
 
           {user ? (
             <DropdownMenu>

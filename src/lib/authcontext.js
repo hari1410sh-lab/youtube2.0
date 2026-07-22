@@ -9,16 +9,25 @@ const userContext = createContext(null);
 export const UserProvider = ({ children }) => {
   const [user, setUser] = useState(null);
 
-useEffect(() => {
-  const savedUser = localStorage.getItem("user");
-  if (savedUser) {
-    setUser(JSON.parse(savedUser));
-  }
-}, []);
+  useEffect(() => {
+    const savedUser = localStorage.getItem("user");
+    if (savedUser) {
+      setUser(JSON.parse(savedUser));
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const root = document.documentElement;
+    if (user?.theme === "light") {
+      root.classList.remove("dark");
+    } else {
+      root.classList.add("dark");
+    }
+  }, [user?.theme]);
 
   const login = (userdata) => {
     setUser(userdata);
-
     if (typeof window !== "undefined") {
       localStorage.setItem("user", JSON.stringify(userdata));
     }
@@ -26,17 +35,28 @@ useEffect(() => {
 
   const logout = async () => {
     setUser(null);
-
     if (typeof window !== "undefined") {
       localStorage.removeItem("user");
     }
-
     await signOut(auth);
+  };
+
+  const toggleTheme = async () => {
+    if (!user?._id) return;
+    const newTheme = user.theme === "light" ? "dark" : "light";
+    try {
+      const response = await axiosInstance.patch(`/user/theme/${user._id}`, {
+        theme: newTheme,
+      });
+      login(response.data.result);
+    } catch (error) {
+      console.error("Error updating theme:", error);
+    }
   };
 
   const saveUserWithBackendFallback = async (payload) => {
     try {
-    const response = await axiosInstance.post("/user/login", payload);
+      const response = await axiosInstance.post("/user/login", payload);
       login(response.data.result);
     } catch (error) {
       console.error(error);
@@ -48,7 +68,6 @@ useEffect(() => {
     try {
       const result = await signInWithPopup(auth, provider);
       const firebaseuser = result.user;
-
       await saveUserWithBackendFallback({
         email: firebaseuser.email,
         name: firebaseuser.displayName,
@@ -76,7 +95,7 @@ useEffect(() => {
   }, []);
 
   return (
-    <userContext.Provider value={{ user, login, logout, handlegoogleSignIn }}>
+    <userContext.Provider value={{ user, login, logout, handlegoogleSignIn, toggleTheme }}>
       {children}
     </userContext.Provider>
   );
