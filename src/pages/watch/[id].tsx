@@ -19,6 +19,7 @@ import Sidebar from "@/components/sidebar";
 import VideoPlayer from "@/components/video-player";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import EnhancedCommentItem from "@/components/enhanced-comment-item";
 import axiosInstance from "@/lib/axiosinstance";
 import videoApi, { type CommentResponse } from "@/lib/video-api";
 import { useUser } from "@/lib/authcontext";
@@ -53,94 +54,42 @@ function getVideoFromRoute(id: string | string[] | undefined) {
   );
 }
 
-function SuggestedVideo({ video }: { video: Video }) {
-  const [timeAgo, setTimeAgo] = useState("");
+        function SuggestedVideo({ video }: { video: Video }) {
+          const [timeAgo, setTimeAgo] = useState("");
 
-  useEffect(() => {
-    setTimeAgo(formatDateToNow(video.createdAt));
-  }, [video.createdAt]);
+          useEffect(() => {
+            setTimeAgo(formatDateToNow(video.createdAt));
+          }, [video.createdAt]);
 
-  return (
-    <Link
-      href={`/watch/${video.id}`}
-      className="group grid grid-cols-[160px_1fr] gap-2"
-    >
-      <div
-        className={`relative flex aspect-video items-center justify-center overflow-hidden rounded-md bg-gradient-to-br ${video.gradient}`}
-      >
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_30%,rgba(255,255,255,0.7),transparent_18%),radial-gradient(circle_at_25%_70%,rgba(0,0,0,0.28),transparent_24%)]" />
-        <span className="absolute bottom-1 right-1 rounded bg-black/85 px-1.5 py-0.5 text-[11px] font-semibold text-white">
-          {video.duration}
-        </span>
-      </div>
-      <div className="min-w-0 py-0.5">
-        <h3 className="line-clamp-2 text-sm font-semibold leading-5 group-hover:text-muted-foreground">
-          {video.title}
-        </h3>
-        <p className="mt-1 truncate text-xs text-muted-foreground">
+          return (
+            <Link
+              href={`/watch/${video.id}`}
+              className="group grid grid-cols-[160px_1fr] gap-2"
+            >
+              <div
+                className={`relative flex aspect-video items-center justify-center overflow-hidden rounded-md bg-gradient-to-br ${video.gradient}`}
+              >
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_30%,rgba(255,255,255,0.7),transparent_18%),radial-gradient(circle_at_25%_70%,rgba(0,0,0,0.28),transparent_24%)]" />
+                <span className="absolute bottom-1 right-1 rounded bg-black/85 px-1.5 py-0.5 text-[11px] font-semibold text-white">
+                  {video.duration}
+                </span>
+              </div>
+              <div className="min-w-0 py-0.5">
+                <h3 className="line-clamp-2 text-sm font-semibold leading-5 group-hover:text-muted-foreground">
+                  {video.title}
+                </h3>
+                <p className="mt-1 truncate text-xs text-muted-foreground">
           {video.channel}
         </p>
-        <p className="text-xs text-muted-foreground">
-  {formatViews(video.views)} views - {timeAgo}
-</p>
-      </div>
-    </Link>
-  );
-}
+                <p className="text-xs text-muted-foreground">
+          {formatViews(video.views)} views - {timeAgo}
+        </p>
+              </div>
+            </Link>
+          );
+        }
 
-function CommentItem({
-  comment,
-  currentUserId,
-  onDelete,
-}: {
-  comment: CommentResponse;
-  currentUserId?: string;
-  onDelete: (id: string) => void;
-}) {
-  const isOwn = currentUserId && comment.userId === currentUserId;
-  const [timeAgo, setTimeAgo] = useState(""); 
-
-  useEffect(() => {
-    setTimeAgo(formatDateToNow(comment.createdAt));
-  }, [comment.createdAt]);
-
-  return (
-    <div className="group flex gap-3 py-3">
-      <Avatar className="size-9 shrink-0">
-        {comment.userImage ? (
-          <AvatarImage src={comment.userImage} alt={comment.userName} />
-        ) : null}
-        <AvatarFallback>
-          {(comment.userName || "U").charAt(0).toUpperCase()}
-        </AvatarFallback>
-      </Avatar>
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
-          <span className="text-[13px] font-semibold">
-            {comment.userName || "Anonymous"}
-          </span>
-         <span className="text-xs text-muted-foreground">
-  {timeAgo}
-</span>
-        </div>
-        <p className="mt-1 text-sm leading-5">{comment.text}</p>
-      </div>
-      {isOwn && (
-        <Button
-          variant="ghost"
-          size="icon"
-          className="size-8 shrink-0 opacity-0 transition-opacity group-hover:opacity-100"
-          onClick={() => onDelete(comment._id)}
-          title="Delete comment"
-        >
-          <Trash2 className="size-4 text-destructive" />
-        </Button>
-      )}
-    </div>
-  );
-}
-
-export default function WatchPage() {
+        export default function WatchPage() {
   const router = useRouter();
   const { id } = router.query;
   const { user } = useUser() as { user: any };
@@ -433,12 +382,30 @@ export default function WatchPage() {
       setComments((prev) => [newComment, ...prev]);
       setCommentText("");
       setCommentInputFocused(false);
-    } catch (error) {
+    } catch (error: any) {
+      const reason = error?.response?.data?.reason;
+      let errorMessage = "Failed to add comment";
+      
+      if (reason === "PROFANITY_DETECTED") {
+        errorMessage = "Your comment contains prohibited language";
+      } else if (reason === "EXCESSIVE_CAPS") {
+        errorMessage = "Comment has too much UPPERCASE text";
+      } else if (reason === "EXCESSIVE_SPECIAL_CHARS") {
+        errorMessage = "Comment has too many special characters";
+      } else if (reason === "CONTAINS_LINK") {
+        errorMessage = "Comments with links are not allowed";
+      } else if (reason === "TOO_SHORT") {
+        errorMessage = "Comment is too short";
+      } else if (reason === "TOO_LONG") {
+        errorMessage = "Comment is too long (max 2000 characters)";
+      }
+      
+      showToast("error", errorMessage);
       console.error("Error adding comment:", error);
     } finally {
       setCommentLoading(false);
     }
-  }, [user, isDbVideo, commentLoading, commentText, currentVideo?.id]);
+  }, [user, isDbVideo, commentLoading, commentText, currentVideo?.id, showToast]);
 
   const handleDeleteComment = useCallback(
     async (commentId: string) => {
@@ -453,6 +420,16 @@ export default function WatchPage() {
     },
     [user]
   );
+
+  const handleRefreshComments = useCallback(async () => {
+    if (!isDbVideo || !currentVideo?.id) return;
+    try {
+      const updatedComments = await videoApi.getComments(currentVideo.id);
+      setComments(updatedComments);
+    } catch (error) {
+      console.error("Error refreshing comments:", error);
+    }
+  }, [isDbVideo, currentVideo?.id]);
 
   if (loading || !currentVideo) {
     return (
@@ -681,11 +658,23 @@ export default function WatchPage() {
             {comments.length > 0 ? (
               <div className="mt-2 divide-y">
                 {comments.map((comment) => (
-                  <CommentItem
+                  <EnhancedCommentItem
                     key={comment._id}
                     comment={comment}
                     currentUserId={user?._id}
                     onDelete={handleDeleteComment}
+                    onLike={(commentId, liked) => {
+                      // Refresh comments to get updated like count
+                      handleRefreshComments();
+                    }}
+                    onDislike={(commentId, disliked) => {
+                      // Refresh comments to get updated dislike count
+                      handleRefreshComments();
+                    }}
+                    onReport={(commentId) => {
+                      // Refresh comments to get updated report status
+                      handleRefreshComments();
+                    }}
                   />
                 ))}
               </div>

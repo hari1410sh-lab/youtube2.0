@@ -28,6 +28,13 @@ export interface CommentResponse {
   userName: string;
   userImage: string;
   text: string;
+  language?: string;
+  likes?: string[];
+  dislikes?: string[];
+  likesCount?: number;
+  dislikesCount?: number;
+  isReported?: boolean;
+  reportCount?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -117,6 +124,74 @@ export const videoApi = {
     await axiosInstance.delete(`/comment/${commentId}`, {
       data: { userId },
     });
+  },
+
+  /**
+   * Likes a comment. Toggles the like state.
+   */
+  likeComment: async (commentId: string, userId: string): Promise<CommentResponse> => {
+    const response = await axiosInstance.patch<{ result: CommentResponse }>(
+      `/comment/${commentId}/like`,
+      { userId }
+    );
+    return response.data?.result;
+  },
+
+  /**
+   * Dislikes a comment. Toggles the dislike state.
+   */
+  dislikeComment: async (commentId: string, userId: string): Promise<CommentResponse> => {
+    const response = await axiosInstance.patch<{ result: CommentResponse }>(
+      `/comment/${commentId}/dislike`,
+      { userId }
+    );
+    return response.data?.result;
+  },
+
+  /**
+   * Reports a comment for moderation.
+   */
+  reportComment: async (
+    commentId: string,
+    userId: string,
+    reason: string,
+    details?: string
+  ): Promise<{ message: string; reportId: string; totalReports: number }> => {
+    const response = await axiosInstance.post<{
+      message: string;
+      reportId: string;
+      totalReports: number;
+    }>(`/comment/${commentId}/report`, {
+      userId,
+      reason,
+      details,
+    });
+    return response.data;
+  },
+
+  /**
+   * Translates a comment to a target language.
+   */
+  translateComment: async (
+    commentId: string,
+    targetLang: string
+  ): Promise<{
+    commentId: string;
+    original: string;
+    translated: string;
+    sourceLang: string;
+    targetLang: string;
+    isSameLanguage?: boolean;
+  }> => {
+    const response = await axiosInstance.post<{
+      commentId: string;
+      original: string;
+      translated: string;
+      sourceLang: string;
+      targetLang: string;
+      isSameLanguage?: boolean;
+    }>(`/comment/${commentId}/translate`, { targetLang });
+    return response.data;
   },
 
   // ─── Watch Later ───────────────────────────────────────────
