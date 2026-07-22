@@ -52,6 +52,18 @@ const userSchema = new mongoose.Schema({
     enum: ["light", "dark"],
     default: "dark",
   },
+  lastLoginCity: {
+    type: String,
+    default: null,
+  },
+  lastLoginState: {
+    type: String,
+    default: null,
+  },
+  lastDeviceId: {
+    type: String,
+    default: null,
+  },
 });
 
 export default mongoose.model("User", userSchema);

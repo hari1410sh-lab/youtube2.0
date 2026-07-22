@@ -3,11 +3,13 @@ import { signInWithPopup, signOut } from "firebase/auth";
 
 import axiosInstance from "./axiosinstance";
 import { auth, provider } from "./firebase";
+import { getDeviceId } from "./deviceId";
 
 const userContext = createContext(null);
 
 export const UserProvider = ({ children }) => {
   const [user, setUser] = useState(null);
+  const [otpPending, setOtpPending] = useState(null);
 
   useEffect(() => {
     const savedUser = localStorage.getItem("user");
@@ -28,6 +30,7 @@ export const UserProvider = ({ children }) => {
 
   const login = (userdata) => {
     setUser(userdata);
+
     if (typeof window !== "undefined") {
       localStorage.setItem("user", JSON.stringify(userdata));
     }
@@ -35,9 +38,12 @@ export const UserProvider = ({ children }) => {
 
   const logout = async () => {
     setUser(null);
+    setOtpPending(null);
+
     if (typeof window !== "undefined") {
       localStorage.removeItem("user");
     }
+
     await signOut(auth);
   };
 
@@ -56,7 +62,20 @@ export const UserProvider = ({ children }) => {
 
   const saveUserWithBackendFallback = async (payload) => {
     try {
-      const response = await axiosInstance.post("/user/login", payload);
+      const deviceId = getDeviceId();
+      const response = await axiosInstance.post("/user/login", {
+        ...payload,
+        deviceId,
+      });
+
+      if (response.data.otpRequired) {
+        setOtpPending({
+          message: response.data.message,
+          pendingUser: response.data.pendingUser,
+        });
+        return;
+      }
+
       login(response.data.result);
     } catch (error) {
       console.error(error);
@@ -64,10 +83,35 @@ export const UserProvider = ({ children }) => {
     }
   };
 
+  const verifyOtpCode = async (code) => {
+    if (!otpPending) return { success: false, message: "No pending verification." };
+
+    try {
+      const response = await axiosInstance.post("/user/verify-otp", {
+        email: otpPending.pendingUser.email,
+        code,
+        pendingUser: otpPending.pendingUser,
+      });
+
+      login(response.data.result);
+      setOtpPending(null);
+      return { success: true };
+    } catch (error) {
+      const message = error?.response?.data?.message || "Verification failed. Please try again.";
+      return { success: false, message };
+    }
+  };
+
+  const cancelOtp = async () => {
+    setOtpPending(null);
+    await signOut(auth);
+  };
+
   const handlegoogleSignIn = async () => {
     try {
       const result = await signInWithPopup(auth, provider);
       const firebaseuser = result.user;
+
       await saveUserWithBackendFallback({
         email: firebaseuser.email,
         name: firebaseuser.displayName,
@@ -95,7 +139,18 @@ export const UserProvider = ({ children }) => {
   }, []);
 
   return (
-    <userContext.Provider value={{ user, login, logout, handlegoogleSignIn, toggleTheme }}>
+    <userContext.Provider
+      value={{
+        user,
+        login,
+        logout,
+        handlegoogleSignIn,
+        toggleTheme,
+        otpPending,
+        verifyOtpCode,
+        cancelOtp,
+      }}
+    >
       {children}
     </userContext.Provider>
   );

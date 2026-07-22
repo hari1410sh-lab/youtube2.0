@@ -1,6 +1,10 @@
 import mongoose from "mongoose";
 import users from "../auth.js";
 import Video from "../video.js";
+import crypto from "crypto";
+import Otp from "../otp.js";
+import { getLocationFromIp } from "../../utils/geolocation.js";
+import { sendOtpEmail } from "../../utils/mailer.js";
 
 function getISTHour() {
   const formatter = new Intl.DateTimeFormat("en-US", {
@@ -17,30 +21,58 @@ function getDefaultTheme() {
 }
 
 export const login = async (req, res) => {
-  const { email, name, image } = req.body;
+  const { email, name, image, deviceId } = req.body;
+  const ip = req.ip || req.headers["x-forwarded-for"] || req.socket.remoteAddress;
+
   try {
     const existingUser = await users.findOne({ email });
+
     if (!existingUser) {
-      try {
-        const newUser = await users.create({
-          email,
-          name,
-          image,
-          channelname: name || "My Channel",
-          description: "",
-          theme: getDefaultTheme(),
-        });
-        return res.status(200).json({ result: newUser });
-      } catch (error) {
-        console.error("Error creating user:", error);
-        return res.status(500).json({ message: "something went wrong" });
-      }
-    } else {
-      return res.status(200).json({ result: existingUser });
+      const newUser = await users.create({
+        email,
+        name,
+        image,
+        channelname: name || "My Channel",
+        description: "",
+        theme: getDefaultTheme(),
+      });
+      return res.status(200).json({ result: newUser, otpRequired: false });
     }
+
+    const { city, state } = await getLocationFromIp(ip);
+
+    const isKnownLocation =
+      existingUser.lastLoginCity === city && existingUser.lastLoginState === state;
+    const isKnownDevice = existingUser.lastDeviceId === deviceId;
+
+    const isFirstEverLogin =
+      !existingUser.lastLoginCity && !existingUser.lastDeviceId;
+
+    if (isFirstEverLogin || (isKnownLocation && isKnownDevice)) {
+      existingUser.lastLoginCity = city;
+      existingUser.lastLoginState = state;
+      existingUser.lastDeviceId = deviceId;
+      await existingUser.save();
+      return res.status(200).json({ result: existingUser, otpRequired: false });
+    }
+
+    const code = crypto.randomInt(100000, 999999).toString();
+    await Otp.create({ email, code });
+
+    try {
+      await sendOtpEmail({ to: email, code });
+    } catch (emailError) {
+      console.error("Failed to send OTP email:", emailError);
+    }
+
+    return res.status(200).json({
+      otpRequired: true,
+      message: "New location or device detected. Please verify with the code sent to your email.",
+      pendingUser: { email, name, image, deviceId, city, state },
+    });
   } catch (error) {
-    console.error("Error finding user:", error);
-    return res.status(500).json({ message: "something went wrong" });
+    console.error("Error during login:", error);
+    return res.status(500).json({ message: "Something went wrong" });
   }
 };
 
@@ -135,6 +167,34 @@ export const updateTheme = async (req, res) => {
     return res.status(200).json({ result: user });
   } catch (error) {
     console.error("Error updating theme:", error);
+    return res.status(500).json({ message: "Something went wrong" });
+  }
+};
+export const verifyOtp = async (req, res) => {
+  const { email, code, pendingUser } = req.body;
+
+  try {
+    const otpRecord = await Otp.findOne({ email, code }).sort({ createdAt: -1 });
+
+    if (!otpRecord) {
+      return res.status(400).json({ message: "Invalid or expired code. Please try again." });
+    }
+
+    const user = await users.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    user.lastLoginCity = pendingUser.city;
+    user.lastLoginState = pendingUser.state;
+    user.lastDeviceId = pendingUser.deviceId;
+    await user.save();
+
+    await Otp.deleteMany({ email });
+
+    return res.status(200).json({ result: user });
+  } catch (error) {
+    console.error("Error verifying OTP:", error);
     return res.status(500).json({ message: "Something went wrong" });
   }
 };
